@@ -1,20 +1,49 @@
 package co.com.pragma.jpa;
 
+import co.com.pragma.jpa.entity.UserEntity;
+import co.com.pragma.jpa.exceptions.UserNotFoundException;
 import co.com.pragma.jpa.helper.AdapterOperations;
+import co.com.pragma.model.user.User;
+import co.com.pragma.model.user.gateways.UserRepository;
 import org.reactivecommons.utils.ObjectMapper;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigInteger;
+import java.util.List;
+
 @Repository
-public class JPARepositoryAdapter extends AdapterOperations<Object/* change for domain model */, Object/* change for adapter model */, String, JPARepository>
-// implements ModelRepository from domain
+public class JPARepositoryAdapter extends AdapterOperations<User, UserEntity, BigInteger, JPARepository> implements UserRepository
 {
 
     public JPARepositoryAdapter(JPARepository repository, ObjectMapper mapper) {
-        /**
-         *  Could be use mapper.mapBuilder if your domain model implement builder pattern
-         *  super(repository, mapper, d -> mapper.mapBuilder(d,ObjectModel.ObjectModelBuilder.class).build());
-         *  Or using mapper.map with the class of the object model
-         */
-        super(repository, mapper, d -> mapper.map(d, Object.class/* change for domain model */));
+        super(repository, mapper, d -> mapper.map(d, User.class));
+    }
+
+    @Override
+    public void saveUser(User user) {
+        repository.save(toData(user));
+    }
+
+    @Override
+    public List<User> getAllUsers() {
+        return toList(repository.findAll());
+    }
+
+    @Override
+    public User getUserByIdNumber(Long idNumber) {
+        return toEntity(repository.findByIdNumber(idNumber).orElseThrow(UserNotFoundException::new));
+    }
+
+    @Override
+    public User editUser(User user) {
+        UserEntity savedUser= repository.findByIdNumber(user.getIdNumber()).orElseThrow(UserNotFoundException::new);
+        UserEntity editedUser= new UserEntity(savedUser.getId(), user.getName(), user.getLastName(), user.getAge(), user.getIdType(), user.getIdNumber());
+        return toEntity(repository.save(editedUser));
+    }
+
+    @Override
+    public void deleteUser(long idNumber) {
+        UserEntity user = repository.findByIdNumber(idNumber).orElseThrow(UserNotFoundException::new);
+        repository.deleteById(user.getId());
     }
 }
